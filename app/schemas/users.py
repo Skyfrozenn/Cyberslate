@@ -53,6 +53,10 @@ class RefreshTokenlist(BaseModel):
     refresh_tokens : list[RefreshToken] = Field(..., description="Список рефреш токенов")
 
 
+class ResendCodeSchema(BaseModel):
+    email: EmailStr = Field(..., description="Email для повторной отправки кода")
+
+
 
     
 
