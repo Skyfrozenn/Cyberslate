@@ -7,14 +7,28 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from time import time
+from app.services.redis_client import lifespan
+from app.routers import users
+
+from time import time, sleep
 from uuid import uuid4
-from loguru import logger
+
+
+from app.config import logger
+
+
+ 
+
+
+ 
+
 
 app = FastAPI(
     title="Проект для турниров по киберспорту",
-    version="1.0"
+    version="1.0",
+    lifespan=lifespan
 )
+
 
 @app.middleware("http")
 async def log_middleware(request: Request, call_next):
@@ -23,11 +37,11 @@ async def log_middleware(request: Request, call_next):
         try:
             response = await call_next(request) #передаем дальше поток, чтобы получить request данные
             if response.status_code in [401, 402, 403, 404]:
-                logger.warning(f"Request to {request.url.path} failed")
+                logger.warning(f"Ошибка запроса к  {request.url.path} failed")
             else:
-                logger.info('Successfully accessed ' + request.url.path)
+                logger.info('Успешный запрос к ' + request.url.path)
         except Exception as ex:
-            logger.error(f"Request to {request.url.path} failed: {ex}")
+            logger.error(f"Ошибка запроса к  {request.url.path} failed: {ex}")
             response = JSONResponse(content={"success": False}, status_code=500)
         return response
 
@@ -44,7 +58,7 @@ async def modify_request_response_middleware(request: Request, call_next):
     start_time = time() #текущее время
     response = await call_next(request) #некст мидлвар или приложение
     duration = time() - start_time #смотрим время
-    logger.info(f"Request duration: {duration:.10f} seconds | {request.method} {request.url.path}") #логирование
+    logger.info(f"Время выполнения запроса к : {duration:.10f} seconds | {request.method} {request.url.path}") #логирование
     return response  #возврат запроса
 
 
@@ -65,6 +79,10 @@ app.add_middleware( #1
     allow_methods=["*"],  
     allow_headers=["Authorization", "Content-Type"] 
 )
+
+
+
+app.include_router(users.router)
 
 
 @app.get("/")
