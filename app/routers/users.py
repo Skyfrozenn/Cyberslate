@@ -4,12 +4,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 import redis.asyncio as redis
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.users import UserCreateSchema, UserResponseSchema, VerifyCode, ResendCodeSchema
+from app.schemas.commands import JoinCommandResponce
  
-from app.models.users import UserModel
+from app.models import UserModel, CommandModel
 from app.db_depends import get_async_db
 
 from app.services.redis_client import get_redis
@@ -18,6 +19,8 @@ from app.services.email import send_verification_email
 from app.validation.hash_password import hash_password, verify_password
 from app.validation.jwt_manager import jwt_manager
 from app.validation.jwt_validation import jwt_validator
+
+from app.utilits import check_no_role, check_has_team
 
 import random
 
@@ -240,4 +243,57 @@ async def delete_account(
     await db.commit()
     return {"message" : "успешно!"}
     
+
+
+@router.put("/join-team/{command_id}")
+async def join_as_player(
+    command_id : int,
+    join_command : JoinCommandResponce,
+    db : AsyncSession = Depends(get_async_db),
+    user : UserModel = Depends(check_has_team) #проверка что у юзера уже есть команда
+) -> dict:
     
+    command = await db.scalar(select(CommandModel).where(CommandModel.id == command_id))
+
+    if command is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Группа не найдена")
+
+    if command.is_filled == True:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Команда заполена всеми игроками!")
+    
+    if not  verify_password(join_command.password, command.password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный пароль от группы!")
+    
+    user.command_id = command_id
+
+    await db.commit()
+    
+
+    players_count = await db.scalar(
+        select(func.count(UserModel.id))
+        .where(UserModel.command_id == command_id)
+    )
+    
+    
+    if players_count == 5:
+        command.is_filled = True
+        await db.commit()
+        
+
+    return {
+        "message": f"Вы успешно присоединились к команде {command.name} !",
+        "players_count_command": players_count
+    }
+    
+
+    
+@router.put("/player-role")
+async def become_player(
+    db : AsyncSession = Depends(get_async_db),
+    validation_role_user : UserModel =  Depends(check_no_role)
+) -> dict:
+    validation_role_user.role = "player"
+    await db.commit()
+    await db.refresh(validation_role_user)
+
+    return {"message" : f"Ваша роль изменена на {validation_role_user.role}"}

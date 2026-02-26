@@ -12,6 +12,7 @@ from os import getenv
 
 from app.database import Base
 from app.models import UserModel
+from app.models import CommandModel
 
 load_dotenv()
 

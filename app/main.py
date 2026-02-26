@@ -8,9 +8,10 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from app.services.redis_client import lifespan
-from app.routers import users
 
-from time import time, sleep
+from app.routers import users, commands
+
+from time import time
 from uuid import uuid4
 
 
@@ -18,11 +19,6 @@ from app.config import logger
 
 
  
-
-
- 
-
-
 app = FastAPI(
     title="Проект для турниров по киберспорту",
     version="1.0",
@@ -83,6 +79,7 @@ app.add_middleware( #1
 
 
 app.include_router(users.router)
+app.include_router(commands.router)
 
 
 @app.get("/")

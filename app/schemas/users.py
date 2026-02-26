@@ -1,12 +1,13 @@
 from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict, PositiveInt
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
 
 class UserCreateSchema(BaseModel):
     username : str = Field(..., min_length=3, max_length=20, description="Никнейм от 3-29 символов")
     email : EmailStr = Field(..., description="Email пользователя")
     password : str = Field(..., min_length=8, description="Пароль от 8 символов")
+    
 
     @field_validator("password")
     @classmethod
@@ -19,14 +20,19 @@ class UserCreateSchema(BaseModel):
             raise ValueError(f" В пароде должен быть хоть один спецсимвол {special_characters}")
         return value
 
+   
+
 
 class UserResponseSchema(BaseModel):
     id: PositiveInt
     username: str
     email: EmailStr
+    command_id : int | None
     created_at: datetime
     updated_at: datetime
+    role : str
     is_active: bool
+    is_team_creator : bool
 
     model_config = ConfigDict(from_attributes=True)
 
